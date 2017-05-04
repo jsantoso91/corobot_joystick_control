@@ -1,0 +1,64 @@
+#include <ros/ros.h>
+#include <std_msgs/UInt16.h>
+#include <sensor_msgs/Joy.h>
+
+
+class Servo
+{
+public:
+  Servo();
+
+private:
+  void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
+
+  ros::NodeHandle nh_;
+
+ // Joystick tuning params
+  int linear_, angular_;
+  double l_scale_, a_scale_;
+
+  // Joystick dev to listen to
+  ros::Subscriber joy_sub;
+
+  // Robot bits to control
+  ros::ServiceClient create_client;
+  ros::ServiceClient servo_client;
+
+  ros::Publisher deg_pub_;  // I want to publish an angle as std_msgs/UInt16
+  ros::Subscriber joy_sub_;
+};
+
+
+Servo::Servo():  
+  linear_(1),
+  angular_(2)
+{
+
+  nh_.param("axis_linear", linear_, linear_);
+  nh_.param("axis_angular", angular_, angular_);
+  nh_.param("scale_angular", a_scale_, a_scale_);
+  nh_.param("scale_linear", l_scale_, l_scale_);
+
+
+  deg_pub_ = nh_.advertise<std_msgs::UInt16>("servo", 1);
+
+
+  joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 10, &Servo::joyCallback, this);
+
+}  
+
+void Servo::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
+{
+  std_msgs::UInt16 deg; 
+  deg.data = 90 + 90*l_scale_*joy->axes[linear_];
+  deg_pub_.publish(deg);
+}
+
+
+int main(int argc, char** argv) 
+{
+  ros::init(argc, argv, "servo_joy");
+  Servo servo_joy;
+
+  ros::spin();
+}
